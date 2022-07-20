@@ -18,6 +18,7 @@ This sample deploys the following resources:
 
 ### Option 1: Deploy via GitHub Actions
 
+
 ### Option 2: Deploy via 'Deploy to Azure' Button
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fwillvelida%2Fcosmos-db-bicep-sample%2Fmain%2Fdeploy%2Fazuredeploy.json)
