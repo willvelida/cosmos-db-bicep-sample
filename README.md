@@ -14,7 +14,6 @@ This sample deploys the following resources:
 - Enables Microsoft Defender for Azure Cosmos DB.
 - Creates and Assigns a custom SQL Role for the deployed Azure Function to make operations on Cosmos DB.
 
-## 
-
 ## Deploying the sample
 
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fwillvelida%2Fcosmos-db-bicep-sample%2Fmain%2Fdeploy%2Fazuredeploy.json)
