@@ -1,0 +1,986 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.8.9.13224",
+      "templateHash": "17831715978223020533"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "The location to deploy the Cosmos DB account to. Default value is the location of the resource group."
+      }
+    },
+    "applicationName": {
+      "type": "string",
+      "defaultValue": "[uniqueString(resourceGroup().id)]",
+      "metadata": {
+        "description": "Name of our application"
+      }
+    },
+    "secondaryRegion": {
+      "type": "string",
+      "defaultValue": "australiasoutheast",
+      "metadata": {
+        "description": "The secondary replica region for the Cosmos DB account"
+      }
+    },
+    "cosmosDbAccountName": {
+      "type": "string",
+      "defaultValue": "[format('{0}db', parameters('applicationName'))]",
+      "maxLength": 44,
+      "metadata": {
+        "description": "Name of our Cosmos DB account that will be deployed"
+      }
+    },
+    "defaultConsistencyLevel": {
+      "type": "string",
+      "defaultValue": "Session",
+      "allowedValues": [
+        "Eventual",
+        "ConsistentPrefix",
+        "Session",
+        "BoundedStaleness",
+        "Strong"
+      ],
+      "metadata": {
+        "description": "The default consistency level of the Cosmos DB account."
+      }
+    },
+    "enableAutomaticFailover": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable automatic failover for this account"
+      }
+    },
+    "enableAnalyticalStorage": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable Analytical storage for this account"
+      }
+    },
+    "enableFullTextQuery": {
+      "type": "string",
+      "defaultValue": "True",
+      "allowedValues": [
+        "True",
+        "False",
+        "None"
+      ],
+      "metadata": {
+        "description": "Enable Full Text Query capabilities for this account"
+      }
+    },
+    "databaseName": {
+      "type": "string",
+      "defaultValue": "OrdersDB",
+      "metadata": {
+        "description": "The name for the database"
+      }
+    },
+    "containerName": {
+      "type": "string",
+      "defaultValue": "orders",
+      "metadata": {
+        "description": "The name for the container"
+      }
+    },
+    "maxThroughput": {
+      "type": "int",
+      "defaultValue": 4000,
+      "maxValue": 10000,
+      "minValue": 4000,
+      "metadata": {
+        "description": "The maximum amount of throughput to provision on this container"
+      }
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string",
+      "defaultValue": "[format('{0}law', parameters('applicationName'))]",
+      "metadata": {
+        "description": "The name of the Log Analytics workspace that the account will send logs to"
+      }
+    },
+    "logAnalyticsWorkspaceSKU": {
+      "type": "string",
+      "defaultValue": "PerGB2018",
+      "allowedValues": [
+        "PerGB2018",
+        "Free",
+        "PerNode",
+        "Standard",
+        "Standalone"
+      ],
+      "metadata": {
+        "description": "The SKU to use for the Log Analytics workspace"
+      }
+    },
+    "enablePublicAccessOnWorkspace": {
+      "type": "string",
+      "defaultValue": "Enabled",
+      "allowedValues": [
+        "Enabled",
+        "Disabled"
+      ],
+      "metadata": {
+        "description": "Enable or disable public access for Log Analytics workspace"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[format('{0}kv', parameters('applicationName'))]",
+      "metadata": {
+        "description": "The name of the key vault that we will create"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "[format('{0}fnstor', replace(parameters('applicationName'), '-', ''))]",
+      "metadata": {
+        "description": "The name of our storage account that the Function will use"
+      }
+    },
+    "storageAccountSKU": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "metadata": {
+        "description": "The SKU that our storage account will use"
+      }
+    },
+    "appInsightsName": {
+      "type": "string",
+      "defaultValue": "[format('{0}ai', parameters('applicationName'))]",
+      "metadata": {
+        "description": "The name of our Application Insights workspace"
+      }
+    },
+    "appServicePlanName": {
+      "type": "string",
+      "defaultValue": "[format('{0}asp', parameters('applicationName'))]",
+      "metadata": {
+        "description": "The name of the App Service Plan"
+      }
+    },
+    "functionAppName": {
+      "type": "string",
+      "defaultValue": "[format('{0}func', parameters('applicationName'))]",
+      "metadata": {
+        "description": "The name of our Function App"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts",
+      "apiVersion": "2022-05-15-preview",
+      "name": "[parameters('cosmosDbAccountName')]",
+      "kind": "GlobalDocumentDB",
+      "location": "[parameters('location')]",
+      "properties": {
+        "enableAnalyticalStorage": "[parameters('enableAnalyticalStorage')]",
+        "analyticalStorageConfiguration": {
+          "schemaType": "WellDefined"
+        },
+        "backupPolicy": {
+          "type": "Periodic",
+          "periodicModeProperties": {
+            "backupIntervalInMinutes": 60,
+            "backupRetentionIntervalInHours": 8,
+            "backupStorageRedundancy": "Geo"
+          }
+        },
+        "consistencyPolicy": {
+          "defaultConsistencyLevel": "[parameters('defaultConsistencyLevel')]"
+        },
+        "enableAutomaticFailover": "[parameters('enableAutomaticFailover')]",
+        "databaseAccountOfferType": "Standard",
+        "diagnosticLogSettings": {
+          "enableFullTextQuery": "[parameters('enableFullTextQuery')]"
+        },
+        "locations": [
+          {
+            "locationName": "[parameters('location')]",
+            "failoverPriority": 0,
+            "isZoneRedundant": true
+          },
+          {
+            "locationName": "[parameters('secondaryRegion')]",
+            "failoverPriority": 1,
+            "isZoneRedundant": false
+          }
+        ]
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+      "apiVersion": "2022-05-15-preview",
+      "name": "[format('{0}/{1}', parameters('cosmosDbAccountName'), parameters('databaseName'))]",
+      "properties": {
+        "resource": {
+          "id": "[parameters('databaseName')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+      "apiVersion": "2022-05-15-preview",
+      "name": "[format('{0}/{1}/{2}', parameters('cosmosDbAccountName'), parameters('databaseName'), parameters('containerName'))]",
+      "properties": {
+        "resource": {
+          "id": "[parameters('containerName')]",
+          "partitionKey": {
+            "paths": [
+              "/id"
+            ],
+            "kind": "Hash"
+          },
+          "indexingPolicy": {
+            "indexingMode": "consistent",
+            "includedPaths": [
+              {
+                "path": "/*"
+              }
+            ]
+          }
+        },
+        "options": {
+          "autoscaleSettings": {
+            "maxThroughput": "[parameters('maxThroughput')]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDbAccountName'), parameters('databaseName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "scope": "[format('Microsoft.DocumentDB/databaseAccounts/{0}', parameters('cosmosDbAccountName'))]",
+      "name": "[parameters('cosmosDbAccountName')]",
+      "properties": {
+        "workspaceId": "[reference(resourceId('Microsoft.Resources/deployments', 'logAnalyticsWorkspace')).outputs.logAnalyticsWorkspaceId.value]",
+        "logs": [
+          {
+            "category": "ControlPlaneRequests",
+            "enabled": true,
+            "retentionPolicy": {
+              "days": 30,
+              "enabled": true
+            }
+          },
+          {
+            "category": "PartitionKeyStatistics",
+            "enabled": true,
+            "retentionPolicy": {
+              "days": 30,
+              "enabled": true
+            }
+          },
+          {
+            "category": "QueryRuntimeStatistics",
+            "enabled": true,
+            "retentionPolicy": {
+              "days": 30,
+              "enabled": true
+            }
+          },
+          {
+            "category": "PartitionKeyRUConsumption",
+            "enabled": true,
+            "retentionPolicy": {
+              "days": 30,
+              "enabled": true
+            }
+          },
+          {
+            "category": "DataPlaneRequests",
+            "enabled": true,
+            "retentionPolicy": {
+              "days": 30,
+              "enabled": true
+            }
+          }
+        ],
+        "metrics": [
+          {
+            "category": "Requests",
+            "enabled": true,
+            "retentionPolicy": {
+              "days": 30,
+              "enabled": true
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'logAnalyticsWorkspace')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Security/advancedThreatProtectionSettings",
+      "apiVersion": "2019-01-01",
+      "scope": "[format('Microsoft.DocumentDB/databaseAccounts/{0}', parameters('cosmosDbAccountName'))]",
+      "name": "current",
+      "properties": {
+        "isEnabled": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "keyVault",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "cosmosDbAccountName": {
+            "value": "[parameters('cosmosDbAccountName')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.8.9.13224",
+              "templateHash": "11815045754666757640"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the Key Vault that we will deploy."
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The location to deploy the Key Vault to"
+              }
+            },
+            "cosmosDbAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "The Cosmos DB account that will be used for secrets"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2021-11-01-preview",
+              "name": "[parameters('keyVaultName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "[tenant().tenantId]",
+                "enabledForDeployment": true,
+                "accessPolicies": []
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2021-11-01-preview",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'CosmosDbConnectionString')]",
+              "properties": {
+                "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2022-05-15').connectionStrings[0].connectionString]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2021-11-01-preview",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'CosmosDbPrimaryKey')]",
+              "properties": {
+                "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2022-05-15').primaryMasterKey]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2021-11-01-preview",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'CosmosDbPrimaryReadKey')]",
+              "properties": {
+                "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2022-05-15').primaryReadonlyMasterKey]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2021-11-01-preview",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'CosmosDbSecondaryKey')]",
+              "properties": {
+                "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2022-05-15').secondaryMasterKey]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2021-11-01-preview",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'CosmosDbSecondaryReadKey')]",
+              "properties": {
+                "value": "[listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2022-05-15').secondaryReadonlyMasterKey]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "logAnalyticsWorkspace",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "enablePublicAccessOnWorkspace": {
+            "value": "[parameters('enablePublicAccessOnWorkspace')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "logAnalyticsWorkspaceName": {
+            "value": "[parameters('logAnalyticsWorkspaceName')]"
+          },
+          "logAnalyticsWorkspaceSKU": {
+            "value": "[parameters('logAnalyticsWorkspaceSKU')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.8.9.13224",
+              "templateHash": "15323458144526152967"
+            }
+          },
+          "parameters": {
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the Log Analytics Workspace to deploy"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The location to deploy the workspace to."
+              }
+            },
+            "logAnalyticsWorkspaceSKU": {
+              "type": "string",
+              "metadata": {
+                "description": "The SKU to use for the Log Analytics workspace"
+              }
+            },
+            "enablePublicAccessOnWorkspace": {
+              "type": "string",
+              "metadata": {
+                "description": "Enable public access on workspace"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2021-12-01-preview",
+              "name": "[parameters('logAnalyticsWorkspaceName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "[parameters('logAnalyticsWorkspaceSKU')]"
+                },
+                "publicNetworkAccessForIngestion": "[parameters('enablePublicAccessOnWorkspace')]",
+                "publicNetworkAccessForQuery": "[parameters('enablePublicAccessOnWorkspace')]"
+              }
+            }
+          ],
+          "outputs": {
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "appServicePlan",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appServicePlanName": {
+            "value": "[parameters('appServicePlanName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.8.9.13224",
+              "templateHash": "11810204666517354149"
+            }
+          },
+          "parameters": {
+            "appServicePlanName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the App Service Plan"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The location to deploy the App Service Plan to"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/serverfarms",
+              "apiVersion": "2022-03-01",
+              "name": "[parameters('appServicePlanName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Y1",
+                "tier": "Dynamic"
+              },
+              "properties": {}
+            }
+          ],
+          "outputs": {
+            "appServicePlanId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "appInsights",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appInsightsName": {
+            "value": "[parameters('appInsightsName')]"
+          },
+          "enablePublicAccessOnWorkspace": {
+            "value": "[parameters('enablePublicAccessOnWorkspace')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'logAnalyticsWorkspace')).outputs.logAnalyticsWorkspaceId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.8.9.13224",
+              "templateHash": "10117465358879546863"
+            }
+          },
+          "parameters": {
+            "appInsightsName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the App Insights workspace"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The Location to deploy the App Insights workspace to"
+              }
+            },
+            "enablePublicAccessOnWorkspace": {
+              "type": "string",
+              "metadata": {
+                "description": "Enable public access on the workspace"
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "The Log Analytics Workspace Id. Used to connect App Insights to Log Analytics"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[parameters('appInsightsName')]",
+              "location": "[parameters('location')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "publicNetworkAccessForIngestion": "[parameters('enablePublicAccessOnWorkspace')]",
+                "publicNetworkAccessForQuery": "[parameters('enablePublicAccessOnWorkspace')]",
+                "WorkspaceResourceId": "[parameters('logAnalyticsWorkspaceId')]"
+              }
+            }
+          ],
+          "outputs": {
+            "instrumentationKey": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName'))).InstrumentationKey]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'logAnalyticsWorkspace')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "functionApp",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "appInsightsInstrumentationKey": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appInsights')).outputs.instrumentationKey.value]"
+          },
+          "appServicePlanId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appServicePlan')).outputs.appServicePlanId.value]"
+          },
+          "containerName": {
+            "value": "[parameters('containerName')]"
+          },
+          "cosmosDbEndpoint": {
+            "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))).documentEndpoint]"
+          },
+          "databaseName": {
+            "value": "[parameters('databaseName')]"
+          },
+          "functionAppName": {
+            "value": "[parameters('functionAppName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "storageAccountSKU": {
+            "value": "[parameters('storageAccountSKU')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.8.9.13224",
+              "templateHash": "4763929621570860373"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The location to deploy our Function App resources to."
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the storage account to deploy with the Function App"
+              }
+            },
+            "storageAccountSKU": {
+              "type": "string",
+              "metadata": {
+                "description": "The SKU to use for the Storage Account"
+              }
+            },
+            "functionAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name given to the Function App"
+              }
+            },
+            "appServicePlanId": {
+              "type": "string",
+              "metadata": {
+                "description": "The App Plan Id to deploy the Function to."
+              }
+            },
+            "appInsightsInstrumentationKey": {
+              "type": "string",
+              "metadata": {
+                "description": "The App Insights Instrumentation Key to connect this Function to"
+              }
+            },
+            "containerName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the container that this Function will use"
+              }
+            },
+            "databaseName": {
+              "type": "string",
+              "metadata": {
+                "description": "The database that this Function will use"
+              }
+            },
+            "cosmosDbEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "The Cosmos DB endpoint that this Function will use"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2021-09-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[parameters('storageAccountSKU')]"
+              },
+              "kind": "StorageV2"
+            },
+            {
+              "type": "Microsoft.Web/sites",
+              "apiVersion": "2022-03-01",
+              "name": "[parameters('functionAppName')]",
+              "location": "[parameters('location')]",
+              "kind": "functionapp",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "serverFarmId": "[parameters('appServicePlanId')]",
+                "siteConfig": {
+                  "appSettings": [
+                    {
+                      "name": "AzureWebJobsStorage",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2021-09-01').keys[0].value)]"
+                    },
+                    {
+                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2021-09-01').keys[0].value)]"
+                    },
+                    {
+                      "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                      "value": "[parameters('appInsightsInstrumentationKey')]"
+                    },
+                    {
+                      "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+                      "value": "[format('InstrumentationKey={0}', parameters('appInsightsInstrumentationKey'))]"
+                    },
+                    {
+                      "name": "FUNCTIONS_WORKER_RUNTIME",
+                      "value": "dotnet"
+                    },
+                    {
+                      "name": "FUNCTIONS_EXTENSION_VERSION",
+                      "value": "~4"
+                    },
+                    {
+                      "name": "ContainerName",
+                      "value": "[parameters('containerName')]"
+                    },
+                    {
+                      "name": "DatabaseName",
+                      "value": "[parameters('databaseName')]"
+                    },
+                    {
+                      "name": "CosmosDbEndpoint",
+                      "value": "[parameters('cosmosDbEndpoint')]"
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "functionAppPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2022-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'appInsights')]",
+        "[resourceId('Microsoft.Resources/deployments', 'appServicePlan')]",
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers', parameters('cosmosDbAccountName'), parameters('databaseName'), parameters('containerName'))]",
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]",
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('cosmosDbAccountName'), parameters('databaseName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2020-10-01",
+      "name": "sqlRoleAssignment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "cosmosDbAccountName": {
+            "value": "[parameters('cosmosDbAccountName')]"
+          },
+          "functionAppPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'functionApp')).outputs.functionAppPrincipalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.8.9.13224",
+              "templateHash": "3224574873373918992"
+            }
+          },
+          "parameters": {
+            "cosmosDbAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the Cosmos DB account that we will use for SQL Role Assignments"
+              }
+            },
+            "functionAppPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The Principal Id of the Function App that we will grant the role assignment to."
+              }
+            }
+          },
+          "variables": {
+            "roleDefinitionId": "[guid('sql-role-definition-', parameters('functionAppPrincipalId'), resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')))]",
+            "roleAssignmentId": "[guid(variables('roleDefinitionId'), parameters('functionAppPrincipalId'), resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')))]",
+            "roleDefinitionName": "Function Read Write Role",
+            "dataActions": [
+              "Microsoft.DocumentDB/databaseAccounts/readMetadata",
+              "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/*",
+              "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*",
+              "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/readChangeFeed"
+            ]
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions",
+              "apiVersion": "2021-11-15-preview",
+              "name": "[format('{0}/{1}', parameters('cosmosDbAccountName'), variables('roleDefinitionId'))]",
+              "properties": {
+                "roleName": "[variables('roleDefinitionName')]",
+                "type": "CustomRole",
+                "assignableScopes": [
+                  "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+                ],
+                "permissions": [
+                  {
+                    "dataActions": "[variables('dataActions')]"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments",
+              "apiVersion": "2021-11-15-preview",
+              "name": "[format('{0}/{1}', parameters('cosmosDbAccountName'), variables('roleAssignmentId'))]",
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', split(format('{0}/{1}', parameters('cosmosDbAccountName'), variables('roleDefinitionId')), '/')[0], split(format('{0}/{1}', parameters('cosmosDbAccountName'), variables('roleDefinitionId')), '/')[1])]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "scope": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions', split(format('{0}/{1}', parameters('cosmosDbAccountName'), variables('roleDefinitionId')), '/')[0], split(format('{0}/{1}', parameters('cosmosDbAccountName'), variables('roleDefinitionId')), '/')[1])]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'functionApp')]"
+      ]
+    }
+  ]
+}
