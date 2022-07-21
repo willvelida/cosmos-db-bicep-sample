@@ -7,12 +7,20 @@ param location string
 @description('The Cosmos DB account that will be used for secrets')
 param cosmosDbAccountName string
 
+@description('The time that this deployment was initiated')
+param deploymentTime string = utcNow('u')
+
+var tags = {
+  DeployedAt: deploymentTime
+}
+
 resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2022-05-15' existing = {
   name: cosmosDbAccountName
 }
 
 resource keyVault 'Microsoft.KeyVault/vaults@2021-11-01-preview' = {
   name: keyVaultName
+  tags: tags
   location: location
   properties: {
     sku: {

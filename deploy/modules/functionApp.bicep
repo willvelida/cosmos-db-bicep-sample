@@ -25,8 +25,16 @@ param databaseName string
 @description('The Cosmos DB endpoint that this Function will use')
 param cosmosDbEndpoint string
 
+@description('The time that this deployment was initiated')
+param deploymentTime string = utcNow('u')
+
+var tags = {
+  DeployedAt: deploymentTime
+}
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
   name: storageAccountName
+  tags: tags
   location: location
   sku: {
     name: storageAccountSKU
@@ -36,6 +44,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
 
 resource functionApp 'Microsoft.Web/sites@2022-03-01' = {
   name: functionAppName
+  tags: tags
   location: location
   kind: 'functionapp'
   identity: {

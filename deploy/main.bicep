@@ -84,10 +84,18 @@ param appServicePlanName string = '${applicationName}asp'
 @description('The name of our Function App')
 param functionAppName string = '${applicationName}func'
 
+@description('The time that this deployment was initiated')
+param deploymentTime string = utcNow('u')
+
+var tags = {
+  DeployedAt: deploymentTime
+}
+
 // Define our Cosmos DB account.
 resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2022-05-15-preview' = {
   name: cosmosDbAccountName
   kind: 'GlobalDocumentDB'
+  tags: tags
   location: location
   properties: {
     enableAnalyticalStorage: enableAnalyticalStorage
